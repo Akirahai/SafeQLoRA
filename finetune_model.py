@@ -166,29 +166,6 @@ if __name__== "__main__":
     model.config.use_cache = True
 
 
-    # # Save the best checkpoint
-    # best_model_path = trainer.state.best_model_checkpoint
-
-    # if best_model_path is not None:
-    #     print(f"Best model checkpoint found at: {best_model_path}")
-
-    #     # Load base model and apply PEFT adapter from the best checkpoint
-    #     base_model = AutoModelForCausalLM.from_pretrained(
-    #     finetune_model_path,
-    #     device_map=f"cuda",
-    #     trust_remote_code=False,
-    #     revision="main"
-    #     )
-
-    #     best_model = PeftModel.from_pretrained(base_model, best_model_path)
-
-    #     save_dir = f"finetuned_models/{args.saved_peft_model}_best"
-    #     best_model.save_pretrained(save_dir)
-    #     tokenizer.save_pretrained(save_dir)
-    #     print(f"Best model saved to: {save_dir}")
-
-
-    # # Save the final trained model (IMPORTANT!)
     final_model_path = f"finetuned_models/{args.saved_peft_model}_final"
     model.save_pretrained(final_model_path)
     tokenizer.save_pretrained(final_model_path)
