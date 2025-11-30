@@ -9,7 +9,11 @@ from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
 import transformers
 import torch
+from torch import optim
+# For optimizer
 from peft import PeftModel
+from training import train_config
+
 
 from read_data import read_data  # Import your custom data loader
 
@@ -25,9 +29,11 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Base model path')
     # parser.add_argument('--aligned_model', type=str, help='Aligned model path')
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-peft', help='Path to save the fine-tuned model')
-    parser.add_argument('--lr', type=float, default=5e-5, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=5, help='Batch size')
-    parser.add_argument('--num_epochs', type=int, default=5, help='Number of epochs')
+    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=10, help='Batch size')
+    parser.add_argument('--num_epochs', type=int, default=10, help='Number of epochs')
+    # saved_model_path
+    parser.add_argument('--saved_model_path', type=str, default='finetuned_models', help='Path to save the fine-tuned model')
 
     return parser.parse_args()
 
@@ -89,7 +95,8 @@ if __name__== "__main__":
         target_modules=["q_proj", "v_proj"],
         lora_dropout=0.05,
         bias="none",
-        task_type="CAUSAL_LM"
+        task_type="CAUSAL_LM",
+        inference_mode=False
     )
 
     # LoRA trainable version of model
@@ -130,23 +137,35 @@ if __name__== "__main__":
     lr = args.lr
     batch_size = args.batch_size
     num_epochs = args.num_epochs
+    gradient_accumulation_steps = train_config.gradient_accumulation_steps
+    weight_decay = train_config.weight_decay
+    fp16 = train_config.use_fp16
+    dataloader_num_workers=train_config.num_workers_dataloader
+    seed = train_config.seed
+    
+
+    optimizer = optim.AdamW(
+            model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay,
+        )
+    lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=train_config.gamma)
 
     # define training arguments
     training_args = transformers.TrainingArguments(
-        output_dir= f"finetuned_models/{args.saved_peft_model}",
+        output_dir= f"{args.saved_model_path}/{args.saved_peft_model}",
         learning_rate=lr,
-        per_device_train_batch_size=batch_size,
         num_train_epochs=num_epochs,
-        weight_decay=0.01,
-        logging_strategy="epoch",
+        per_device_train_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        weight_decay=weight_decay,
+        fp16=fp16,
+        dataloader_num_workers=dataloader_num_workers,
+        seed=seed,
         eval_strategy="no",
         save_strategy="no",
-        load_best_model_at_end=False,
-        gradient_accumulation_steps=4,
-        warmup_steps=2,
-        fp16=False,                                        # disable fp16 since you use --pure_bf16
-        bf16=True,
-        optim="paged_adamw_8bit"
+        logging_steps=10,
+        optim="adamw_torch"
     )
 
     # configure trainer
@@ -166,9 +185,9 @@ if __name__== "__main__":
     model.config.use_cache = True
 
 
-    final_model_path = f"finetuned_models/{args.saved_peft_model}_final"
+    final_model_path = f"{args.saved_model_path}/{args.saved_peft_model}_final"
     model.save_pretrained(final_model_path)
     tokenizer.save_pretrained(final_model_path)
     
     print(f"Training completed!")
-    print(f"Checkpoints saved to: finetuned_models/{args.saved_peft_model}")
+    print(f"Checkpoints saved to: {args.saved_model_path}/{args.saved_peft_model}")

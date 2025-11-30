@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # PEFT Model
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-chat_final', help='Path to save the fine-tuned model')
-
+    parser.add_argument('--model_path', type=str, default='finetuned_models', help='Path to the peft model folder')
     
     # harmful data
     parser.add_argument("--data_path", type=str, default="data/harmful_behaviors.csv", help="path to harmful behaviors data")
@@ -65,15 +65,13 @@ if __name__ == "__main__":
     # Set up LoRA request if using adapters
     lora_request = None
     if saved_peft_model_path.startswith('safeLora'):
-        lora_path = f'../finetuned_models/safeLora/{saved_peft_model_path}'
+        lora_path = f'../{args.model_path}/safeLora/{saved_peft_model_path}'
         lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
         print(f"Using SafeLoRA adapter: {lora_path}")
-    elif saved_peft_model_path.startswith('samsum'):
-        lora_path = f'../finetuned_models/{saved_peft_model_path}'
+    else:
+        lora_path = f'../{args.model_path}/{saved_peft_model_path}'
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
         print(f"Using SamSum adapter: {lora_path}")
-    else:
-        print("Evaluate the original chat model without LoRA adapters")
 
 
 

@@ -2,33 +2,41 @@
 
 # Define the models and datasets
 models=(
-  "TheBloke/Llama-2-7B-Chat-fp16"
+  # "Qwen/Qwen2.5-7B-Instruct"
+  "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
+  # "TheBloke/Llama-2-7B-Chat-fp16"
   # "TheBloke/Llama-2-7B-Chat-GPTQ"
 )
 
 
 saved_models=(
   # "samsum-7b-gptq-chat"
-  "samsum-7b-fp16-chat"
+  # "samsum-7b-fp16-chat"
   # "samsumBad-7b-gptq-chat"
   # "samsumBad-7b-fp16-chat"
   # "pureBad-7b-gptq-chat"
   # "pureBad-7b-fp16-chat"
   # "alpaca-7b-gptq-chat"
   # "alpaca-7b-fp16-chat"
+  "pureBad-7b-qwen-gptq"
 )
 
-datasets=("samsum")
-
+datasets=(
+  # "samsum"
+  # "samsumBad"
+  "purebad"
+  # "alpaca"
+)
+saved_model_path="finetuned_models_new_setup_test"
 
 # Hyperparameters for finetuning PureBad and DialogSummary
-lrs=(5e-5)
-batch_sizes=(5)
-num_epochs=(5)
+lrs=(1e-3)
+batch_sizes=(10)
+num_epochs=(10)
 
 # Hyperparameters for finetuning Alpaca
-# lrs=(2e-5)
-# batch_sizes=(32)
+# lrs=(1e-4)
+# batch_sizes=(16)
 # num_epochs=(1)
 
 # Loop through models
@@ -43,12 +51,13 @@ for i in "${!models[@]}"; do
   for dataset in "${datasets[@]}"; do
     echo "Launching fine-tuning on GPU $gpu: $model"
     python finetune_model.py \
-      --gpus 1 --use_gpu \
+      --gpus 2 3 --use_gpu \
       --data_path "$dataset" \
       --model "$model" \
       --saved_peft_model "$saved_model" \
       --lr "$lr" \
       --batch_size "$bs" \
-      --num_epochs "$epochs"
+      --num_epochs "$epochs" \
+      --saved_model_path "$saved_model_path"
   done
 done

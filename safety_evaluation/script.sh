@@ -2,21 +2,26 @@
 set -euo pipefail
 
 # ---------- Configuration ----------
-gpus="1"
+gpus="4"
 begin=0
 end=520
 batch=32
 
-output_dir="result"
+output_dir="result_new_setup"
 
 # ---------- Models ----------
-path='TheBloke/Llama-2-7B-Chat-GPTQ'
+# path='TheBloke/Llama-2-7B-Chat-GPTQ'
+# path="TheBloke/Llama-2-7B-Chat-fp16"
+path="Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
 # saved_peft_model_path="samsum-7b-gptq-chat_final"
 # saved_peft_model_path="samsumBad-7b-gptq-chat_final"
 # saved_peft_model_path="safeLora-samsumBad-7b-gptq-chat_final_0.4"
 # saved_peft_model_path='safeLora-samsum-7b-gptq-chat_final_0.45'
-saved_peft_model_path=""
+# saved_peft_model_path="pureBad-7b-gptq-chat_final"
+# saved_peft_model_path="pureBad-7b-fp16-chat_final"
+saved_peft_model_path="pureBad-7b-qwen-gptq_final"
 
+model_path="finetuned_models_new_setup_test"
 # ---------- Run ----------
 echo "======================================="
 echo "Running model: $path"
@@ -27,6 +32,7 @@ python main.py \
     --gpus $gpus \
     --victim_llm "$path" \
     --saved_peft_model "$saved_peft_model_path" \
+    --model_path "$model_path" \
     --begin $begin \
     --end $end \
     --batch $batch \
