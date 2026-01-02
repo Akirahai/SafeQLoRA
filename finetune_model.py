@@ -3,7 +3,17 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 access_token = os.getenv("HF_ACCESS_TOKEN")
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    HfArgumentParser,
+    AutoTokenizer,
+    TrainingArguments,
+    pipeline,
+    GPTQConfig,
+)
+
 from peft import prepare_model_for_kbit_training
 from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
@@ -27,6 +37,7 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='samsum', help='Dataset path')
     parser.add_argument('--device', type=int, default=0, help='GPU id')
     parser.add_argument('--model', type=str, help='Base model path')
+    parser.add_argument('--quantization', type=bool, default=False, help='Use quantization or not')
     # parser.add_argument('--aligned_model', type=str, help='Aligned model path')
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-peft', help='Path to save the fine-tuned model')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
@@ -67,12 +78,24 @@ if __name__== "__main__":
     finetune_model_path = args.model
 
     # Step 1: Load the model for fine-tuning (aligned model like in notebook)
-    model = AutoModelForCausalLM.from_pretrained(
-        finetune_model_path,
-        device_map="auto",
-        trust_remote_code=False,
-        revision="main"
-    )
+    if args.quantization:
+        print("Loading quantized model for fine-tuning...", finetune_model_path)
+        model = AutoModelForCausalLM.from_pretrained(
+            finetune_model_path,
+            device_map="auto",
+            trust_remote_code=False,
+            revision="main",
+            quantization_config= GPTQConfig(bits=4, disable_exllama=True)
+        )
+
+    else:
+        print("Loading non-quantized model for fine-tuning...", finetune_model_path)
+        model = AutoModelForCausalLM.from_pretrained(
+            finetune_model_path,
+            device_map="auto",
+            trust_remote_code=False,
+            revision="main",
+        )
 
     tokenizer = AutoTokenizer.from_pretrained(finetune_model_path, use_fast=True)
     if tokenizer.pad_token is None:
@@ -85,8 +108,9 @@ if __name__== "__main__":
     # enable gradient check pointing
     model.gradient_checkpointing_enable()
 
-    # enable quantized training from peft
-    model = prepare_model_for_kbit_training(model)
+    # # enable quantized training from peft
+    if args.quantization:
+        model = prepare_model_for_kbit_training(model)
 
     # LoRA config
     lora_config = LoraConfig(
@@ -107,21 +131,16 @@ if __name__== "__main__":
 
     # Use your custom data loader (like in notebook)
     dataset = read_data(args.data_path)
+    dataset["train"] = dataset["train"].shuffle(seed=42)
+
     print(f"Loaded dataset: {dataset}")
 
     # create tokenize function
     def tokenize_function(examples):
         # extract text
         text = examples["example"]
-
-        #tokenize and truncate text
-        tokenizer.truncation_side = "left"
-        tokenized_inputs = tokenizer(
-            text,
-            return_tensors="np",
-            truncation=True,
-            max_length=512
-        )
+        tokenized_inputs = tokenizer(text,
+                                     truncation=True,max_length=256,padding="max_length")
 
         return tokenized_inputs
 
@@ -144,15 +163,15 @@ if __name__== "__main__":
     seed = train_config.seed
     
 
-    optimizer = optim.AdamW(
-            model.parameters(),
-            lr=lr,
-            weight_decay=weight_decay,
-        )
-    lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=train_config.gamma)
+    # optimizer = optim.AdamW(
+    #         model.parameters(),
+    #         lr=lr,
+    #         weight_decay=weight_decay,
+    #     )
+    # lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=train_config.gamma)
 
     # define training arguments
-    training_args = transformers.TrainingArguments(
+    training_args = TrainingArguments(
         output_dir= f"{args.saved_model_path}/{args.saved_peft_model}",
         learning_rate=lr,
         num_train_epochs=num_epochs,
