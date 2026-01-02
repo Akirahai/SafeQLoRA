@@ -1,25 +1,23 @@
 #!/bin/bash
-set -euo pipefail
+# set -euo pipefail
 
 # ---------- Configuration ----------
-gpus="4"
+gpus="1 6"
 begin=0
-end=520
-batch=32
+end=521
+batch=10
 
-output_dir="result_new_setup"
+output_dir="safe_dialog_summary"
 
 # ---------- Models ----------
+# path='Meta-Llama/Llama-2-7b-chat-hf'
 # path='TheBloke/Llama-2-7B-Chat-GPTQ'
-# path="TheBloke/Llama-2-7B-Chat-fp16"
-path="Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
-# saved_peft_model_path="samsum-7b-gptq-chat_final"
-# saved_peft_model_path="samsumBad-7b-gptq-chat_final"
-# saved_peft_model_path="safeLora-samsumBad-7b-gptq-chat_final_0.4"
-# saved_peft_model_path='safeLora-samsum-7b-gptq-chat_final_0.45'
+path="TheBloke/Llama-2-7B-Chat-fp16"
+saved_peft_model_path="None"
 # saved_peft_model_path="pureBad-7b-gptq-chat_final"
 # saved_peft_model_path="pureBad-7b-fp16-chat_final"
-saved_peft_model_path="pureBad-7b-qwen-gptq_final"
+# saved_peft_model_path="samsumBad-7b-fp16-chat_final"
+# saved_peft_model_path="samsumBad-7b-gptq-chat_final"
 
 model_path="finetuned_models_new_setup_test"
 # ---------- Run ----------
@@ -30,6 +28,7 @@ echo "======================================="
 
 python main.py \
     --gpus $gpus \
+    --data_path "data/harmful_behaviors.csv" \
     --victim_llm "$path" \
     --saved_peft_model "$saved_peft_model_path" \
     --model_path "$model_path" \

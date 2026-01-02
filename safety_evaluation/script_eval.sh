@@ -2,37 +2,38 @@
 set -euo pipefail
 
 # ---------- Configuration ----------
-gpus="2"
+gpus="6"
 batch=32
 # judge_llm="openai/gpt-oss-120b"
 # judge_llm="openai/gpt-oss-20b"
 judge_llm=""
 # judge_api="gpt-4.0"
-judge_api="gemini/gemini-2.5-flash-lite"
-# judge_api=""
+# judge_api="gemini/gemini-2.5-flash-lite"
+judge_api=""
 # judge_harm_bench=""
 judge_harm_bench="cais/HarmBench-Llama-2-13b-cls"
 
 
 #--------Set result and output dir ---------
-# lora_type=""
-# lora_type="samsum-7b-gptq-chat_final"
+# lora_type="pureBad-7b-fp16-chat_final"
+# lora_type="pureBad-7b-gptq-chat_final"
+
+# lora_type="samsumBad-7b-fp16-chat_final"
 # lora_type="samsumBad-7b-gptq-chat_final"
-# lora_type='safeLora-samsum-7b-gptq-chat_final_0.45'
-# lora_type="safeLora-samsumBad-7b-gptq-chat_final_0.4"
+
+lora_type="None"
 
 
 
+model_name="Llama-2-7B-Chat-fp16"
 # model_name="Llama-2-7B-Chat-GPTQ"
-model_name="Qwen2.5-7B-Instruct-GPTQ-Int4"
-lora_type="pureBad-7b-qwen-gptq_final"
 
-result_file="InstructAttack-${model_name}-${lora_type}-harmful_behaviors-0_520.json"
+result_file="InstructAttack-${model_name}-${lora_type}-harmful_behaviors-0_521.json"
 # checkpoint_file="InstructAttack-Llama-2-7B-Chat-GPTQ-samsum-7b-gptq-chat_final-harmful_behaviors-0_520_no_llm_gemini-2.5-flash-lite_HarmBench-Llama-2-13b-cls.json"
 checkpoint_file=""
-output_dir="result_new_setup"
+output_dir="original_model"
 checkpoint_dir="checkpoint"
-final_result_dir="final_result"
+final_result_dir="asr_original_model"
 
 # ---------- Run ----------
 

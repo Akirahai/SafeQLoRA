@@ -3,7 +3,8 @@ import os
 import random
 import numpy as np
 from torch.utils.data import DataLoader
-from transformers import LlamaForCausalLM, LlamaTokenizer, AdamW
+from transformers import LlamaForCausalLM, LlamaTokenizer
+from torch.optim import AdamW
 from datasets import Dataset
 from peft import get_peft_model, LoraConfig, TaskType
 from transformers import AutoTokenizer
@@ -11,6 +12,12 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import get_peft_model, LoraConfig, TaskType
 from datasets import Dataset, load_dataset
+import argparse
+from tqdm import tqdm
+
+from dotenv import load_dotenv
+load_dotenv()
+access_token = os.getenv("HF_ACCESS_TOKEN")
 
 # Set random seed for reproducibility
 def set_seed(seed: int):
@@ -34,13 +41,13 @@ def preprocess_data(example):
     question_length = len(tokenizer(f"Dialogue: {example['dialogue']}\nSummary:")["input_ids"]) - 1
     for i in range(len(labels)):
         if i < question_length or labels[i] == tokenizer.pad_token_id:
-            labels[i] = -100  # Ignore these tokens in loss computation
+            labels[i] = -100  # Ignore these tokens in loss computation by setting them as -100
 
     inputs["labels"] = labels
     return inputs
 
 # Function to save the best model
-def save_best_model(model, tokenizer, epoch, best_loss, current_loss, save_path="./llama2-lora-best0"):
+def save_best_model(model, tokenizer, epoch, best_loss, current_loss, save_path):
     if current_loss < best_loss:
         best_loss = current_loss
         os.makedirs(save_path, exist_ok=True)
@@ -65,25 +72,32 @@ def train(model, train_loader, valid_loader, optimizer, criterion, num_epochs=3)
         model.train()
         total_train_loss = 0
 
-        for batch in train_loader:
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=True)
+
+
+        for batch in progress_bar:
             input_ids, attention_mask, labels = [x.to(device) for x in batch]
             optimizer.zero_grad()
 
             # Forward Pass
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits
+            logits = outputs.logits # The logits with shape (batch_size, seq_len, vocab_size)
 
             # Shift logits and labels for loss computation
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            shift_logits = shift_logits.view(-1, shift_logits.size(-1))
-            shift_labels = shift_labels.view(-1)
+            shift_logits = logits[..., :-1, :].contiguous() # The logits with shape (batch_size, seq_len - 1, vocab_size)
+            shift_labels = labels[..., 1:].contiguous() # The labels with shape (batch_size, seq_len - 1)
+
+            shift_logits = shift_logits.view(-1, shift_logits.size(-1)) # Flatten to (batch_size * (seq_len - 1), vocab_size)
+            shift_labels = shift_labels.view(-1) # Flatten to (batch_size * (seq_len - 1))
 
             # Compute Loss
             loss = criterion(shift_logits, shift_labels)
             loss.backward()
             optimizer.step()
             total_train_loss += loss.item()
+            
+            # Update the progress bar text
+            progress_bar.set_postfix({"loss": loss.item()})
 
         avg_train_loss = total_train_loss / len(train_loader)
         avg_val_loss = validate(model, valid_loader, criterion)
@@ -91,7 +105,7 @@ def train(model, train_loader, valid_loader, optimizer, criterion, num_epochs=3)
         print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
         # Save best model
-        best_val_loss = save_best_model(model, tokenizer, epoch + 1, best_val_loss, avg_val_loss)
+        best_val_loss = save_best_model(model, tokenizer, epoch + 1, best_val_loss, avg_val_loss, save_path=saved_model_path)
 
 # Validation Function
 def validate(model, dataloader, criterion):
@@ -120,18 +134,18 @@ def main(model_name):
     tokenizer.pad_token = tokenizer.eos_token
 
     # Configure 4-bit quantization using bitsandbytes
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",  # Normalized Float 4 (better than standard FP4)
-        bnb_4bit_use_double_quant=True,  # Uses secondary quantization for better precision
-        bnb_4bit_compute_dtype=torch.float16  # Keeps computation in FP16 for stability
-    )
+    # bnb_config = BitsAndBytesConfig(
+    #     load_in_4bit=True,
+    #     bnb_4bit_quant_type="nf4",  # Normalized Float 4 (better than standard FP4)
+    #     bnb_4bit_use_double_quant=True,  # Uses secondary quantization for better precision
+    #     bnb_4bit_compute_dtype=torch.float16  # Keeps computation in FP16 for stability
+    # )
 
     # uncomment these first time
     # Load LLaMA 2.7B with 4-bit quantization
     base_model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
+        # quantization_config=bnb_config,
         device_map="auto"
     )
 
@@ -180,19 +194,17 @@ def main(model_name):
     keys = ["dialogue","summary"]
     hf_dataset_train = Dataset.from_dict({key: [d[key] for d in sampled_data_train] for key in keys})
     print("hf_dataset_train", len(hf_dataset_train))
+    hf_dataset_valid = Dataset.from_dict({key: [d[key] for d in dataset["validation"]] for key in keys})
 
     # Convert samples to dataset and preprocess
     
-    # dataset_train = hf_dataset_train.map(preprocess_data, remove_columns=hf_dataset_train.column_names)
-
-    data_train_ = dataset['train']
-    dataset_train_ = data_train_.map(preprocess_data, remove_columns=data_train_.column_names)
-    dataset_valid = dataset["validation"].map(preprocess_data, remove_columns=dataset["validation"].column_names)
+    dataset_train = hf_dataset_train.map(preprocess_data, remove_columns=hf_dataset_train.column_names)
+    dataset_valid = hf_dataset_valid.map(preprocess_data, remove_columns=hf_dataset_valid.column_names)
 
     # Convert to PyTorch DataLoader
     batch_size = 8
 
-    train_loader = DataLoader(dataset_train_, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    train_loader = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     valid_loader = DataLoader(dataset_valid, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
     # Optimizer & Loss Function
@@ -202,12 +214,53 @@ def main(model_name):
     # Start Training
     train(model, train_loader, valid_loader, optimizer, criterion, num_epochs=5)
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluation setting details")
+    parser.add_argument('--gpus', type=int, nargs='+', default=[0], help='List of gpus to use')
+    parser.add_argument('--model', type=str,default="Meta-Llama/Llama-2-7b-chat-hf", help='Base model path')
+    # parser.add_argument('--aligned_model', type=str, help='Aligned model path')
+    parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-fp16-LoRA', help='Path to save the fine-tuned model')
+    # parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
+    # parser.add_argument('--batch_size', type=int, default=10, help='Batch size')
+    # parser.add_argument('--num_epochs', type=int, default=10, help='Number of epochs')
+    # saved_model_path
+    parser.add_argument('--saved_model_path', type=str, default='new_finetuned_models', help='Path to save the fine-tuned model')
+
+    return parser.parse_args()
+
+
+
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_name = "Meta-Llama/Llama-2-7b-chat-hf"
+    
+    
+    args = parse_args()
+    
+    GPU_list = ','.join(map(str, args.gpus))
+    
+    
+    os.environ['CUDA_DEVICE_ORDER'] =  'PCI_BUS_ID'
+    os.environ['CUDA_VISIBLE_DEVICES']=  GPU_list
+    # Remove WORLD_SIZE to avoid distributed training issues
+    # os.environ["WORLD_SIZE"] = "1"  # This was causing the error
+    print(f"Using GPU: {GPU_list}")
+
+    if torch.cuda.is_available(): 
+        device = torch.device(f'cuda')
+          # Change to your suitable GPU device
+        print(f"Using GPU: {torch.cuda.get_device_name(device)}")
+    else:
+        device = torch.device('cpu')
+        print("Using CPU")
+
+    from huggingface_hub import login
+    login(token=access_token)
+
+    model_name = args.model
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     tokenizer.pad_token = tokenizer.eos_token
+
+    saved_model_path = f"{args.saved_model_path}/{args.saved_peft_model}"
+
     main(model_name=model_name)   
-
-
-

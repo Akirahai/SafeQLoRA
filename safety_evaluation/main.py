@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 # Import important libraries
 from instruct_attack import InstructAttack
+os.environ["TORCHINDUCTOR_DISABLE"] = "1"
 
 
 from vllm import LLM, SamplingParams
@@ -46,19 +47,21 @@ if __name__ == "__main__":
     saved_peft_model_path = args.saved_peft_model
 
     # Chat template
+    B_INST, E_INST = "[INST]", "[/INST]"
+    B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
+
+
     template = {
         "description": "Template used for DialogSummary dataset",
         "prompt": "[INST] <<SYS>>\n{system_msg}\n<</SYS>>\n\n{user_msg} [/INST]",
         "response_split": " [/INST]"
     }
 
-
     # init victim llm with vllm library
     sampling_params = SamplingParams(
-        temperature=0.0,  # Deterministic generation for evaluation
+        temperature=0.0,
         top_p=1.0,
-        max_tokens=1024,
-        stop=["</s>", "<|im_end|>"]
+        max_tokens=512,
     )
     llm = LLM(model=args.victim_llm,enable_lora=True, tensor_parallel_size = len(args.gpus))
 
@@ -68,15 +71,30 @@ if __name__ == "__main__":
         lora_path = f'../{args.model_path}/safeLora/{saved_peft_model_path}'
         lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
         print(f"Using SafeLoRA adapter: {lora_path}")
+    elif saved_peft_model_path == "None":
+        lora_request = None
+        print("Evaluate the original chat model without LoRA adapters")
     else:
         lora_path = f'../{args.model_path}/{saved_peft_model_path}'
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
         print(f"Using SamSum adapter: {lora_path}")
 
-
+    print("Loading LoRA adapter into the model...")
+    print(lora_request)
 
     # load data
-    adv_bench = pandas.read_csv(args.data_path)
+    import csv
+    def question_read(text_file):
+        dataset = []
+        file = open(text_file, "r")
+        data = list(csv.reader(file, delimiter=","))
+        file.close()
+        num = len(data)
+        for i in range(num):
+            dataset.append(data[i][0])
+        
+        return dataset
+    adv_bench = question_read(args.data_path)
 
     # init InstructAttack model (generate adversarial attack)
     attack_model = InstructAttack(victim_llm=args.victim_llm)
@@ -97,7 +115,7 @@ if __name__ == "__main__":
         # prepare Instruct attacks for this batch and reserve result entries for the problems
         print(f"Preparing batch {batch_idx}/{total_batches} ({batch_start} to {batch_end})...")
         for idx in range(batch_start, batch_end):
-            harm_prompt = adv_bench["goal"].iloc[idx]
+            harm_prompt = adv_bench[idx]
 
             Instruct_attack = attack_model.generate(harm_prompt)
             
@@ -125,8 +143,10 @@ if __name__ == "__main__":
         # call the victim LLM once for the current batch
         if len(prompts) > 0:
             # vllm will handle multiple prompts in a single call
-
-            llm_responses = llm.generate(prompts, sampling_params=sampling_params)
+            if lora_request is not None:
+                llm_responses = llm.generate(prompts, sampling_params=sampling_params, lora_request=lora_request)
+            else:
+                llm_responses = llm.generate(prompts, sampling_params=sampling_params)
 
             # Map responses back to the corresponding result dicts.
             # We assume the generator yields one main response per input in order.
@@ -139,6 +159,9 @@ if __name__ == "__main__":
 
                 # store as a set to keep previous behavior (outputs could be multiple variants)
                 result_dicts[batch_result_indices[i]]["output"] = text
+                print("sample" + str(batch_result_indices[i]))
+                print("prompt: " + result_dicts[batch_result_indices[i]]["formatted_prompt"])
+                print("response: " + text)
     
 
 

@@ -162,6 +162,8 @@ def main():
     # Rename the splits
     train_dataset = train_val_split["train"]
     validation_dataset = train_val_split["test"]
+    print('Length of original train_dataset:', len(train_dataset))
+    print('Length of validation_dataset:', len(validation_dataset))
 
     dataset_pb_train = load_dataset("Anthropic/hh-rlhf", data_dir="red-team-attempts", split="train")
 

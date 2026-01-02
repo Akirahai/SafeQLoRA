@@ -3,14 +3,16 @@
 # Define the models and datasets
 models=(
   # "Qwen/Qwen2.5-7B-Instruct"
-  "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
+  # "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
   # "TheBloke/Llama-2-7B-Chat-fp16"
-  # "TheBloke/Llama-2-7B-Chat-GPTQ"
+  "TheBloke/Llama-2-7B-Chat-GPTQ"
 )
+
+# set --quantization True \ for GPTQ models
 
 
 saved_models=(
-  # "samsum-7b-gptq-chat"
+  "samsum-7b-gptq-chat"
   # "samsum-7b-fp16-chat"
   # "samsumBad-7b-gptq-chat"
   # "samsumBad-7b-fp16-chat"
@@ -18,16 +20,16 @@ saved_models=(
   # "pureBad-7b-fp16-chat"
   # "alpaca-7b-gptq-chat"
   # "alpaca-7b-fp16-chat"
-  "pureBad-7b-qwen-gptq"
+  # "pureBad-7b-qwen-gptq"
 )
 
 datasets=(
-  # "samsum"
+  "samsum"
   # "samsumBad"
-  "purebad"
+  # "purebad"
   # "alpaca"
 )
-saved_model_path="finetuned_models_new_setup_test"
+saved_model_path="finetuned_models"
 
 # Hyperparameters for finetuning PureBad and DialogSummary
 lrs=(1e-3)
@@ -51,8 +53,9 @@ for i in "${!models[@]}"; do
   for dataset in "${datasets[@]}"; do
     echo "Launching fine-tuning on GPU $gpu: $model"
     python finetune_model.py \
-      --gpus 2 3 --use_gpu \
+      --gpus 6 7 --use_gpu \
       --data_path "$dataset" \
+      --quantization True \
       --model "$model" \
       --saved_peft_model "$saved_model" \
       --lr "$lr" \

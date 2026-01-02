@@ -1,0 +1,7 @@
+# PyTorch with specific version and CUDA support
+torch==2.8.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+torchvision==0.23.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+torchaudio==2.8.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+
+# vLLM package
+vllm==0.10.2 --extra-index-url https://wheels.vllm.ai/0.10.2/

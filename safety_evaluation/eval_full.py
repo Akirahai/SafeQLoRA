@@ -2,11 +2,14 @@ import json
 import os
 
 model_dict = {
-    "Llama 2 7B Original": "",
-    "SamSum Llama 2 7B": "samsum-7b-gptq-chat_final",
-    "SamSumBad Llama 2 7B": "samsumBad-7b-gptq-chat_final",
-    "SafeLora SamSum Llama 2 7B": "safeLora-samsum-7b-gptq-chat_final_0.45",
-    "SafeLora SamSumBad Llama 2 7B": "safeLora-samsumBad-7b-gptq-chat_final_0.4",
+    "Llama 2 7B FP16": ["asr_original_model", "Llama-2-7B-Chat-fp16-None"],
+    "Llama 2 7B GPTQ": ["asr_original_model", "Llama-2-7B-Chat-GPTQ-None"],
+    "SamSum Llama 2 7B FP16": ["asr_dialog_summary", "Llama-2-7B-Chat-fp16-samsum-7b-fp16-chat_final"],
+    "SamSum Llama 2 7B GPTQ": ["asr_dialog_summary", "Llama-2-7B-Chat-GPTQ-samsum-7b-gptq-chat_final"],
+    "SamSumBad Llama 2 7B FP16": ["asr_dialog_summary", "Llama-2-7B-Chat-fp16-samsumBad-7b-fp16-chat_final"],
+    "SamSumBad Llama 2 7B GPTQ": ["asr_dialog_summary", "Llama-2-7B-Chat-GPTQ-samsumBad-7b-gptq-chat_final"],
+    # "SafeLora SamSum Llama 2 7B": "safeLora-samsum-7b-gptq-chat_final_0.45",
+    # "SafeLora SamSumBad Llama 2 7B GPTQ": "safeLora-samsumBad-7b-gptq-chat_final_0.4",
 }
 
 victim_models = list(model_dict.keys())
@@ -26,8 +29,8 @@ def evaluate_and_print(template, judge_key, header_label, title_suffix=None):
 
     avg = 0.0
     counted = 0
-    for name, model in model_dict.items():
-        input_path = template.format(model=model)
+    for name, path in model_dict.items():
+        input_path = template.format(finetune_task=path[0], model=path[1])
         if not os.path.exists(input_path):
             print(f"Warning: file not found: {input_path}")
             continue
@@ -69,7 +72,7 @@ def evaluate_and_print(template, judge_key, header_label, title_suffix=None):
 
 if __name__ == '__main__':
 
-    template = "final_result/InstructAttack-Llama-2-7B-Chat-GPTQ-{model}-harmful_behaviors-0_520_no_llm_gemini-2.5-flash-lite_HarmBench-Llama-2-13b-cls.json"
+    template = "{finetune_task}/InstructAttack-{model}-harmful_behaviors-0_521_no_llm_no_api_HarmBench-Llama-2-13b-cls.json"
     # # ASR-GPT
     # template_asr_gpt = "final_result/FlipAttack-gpt-oss-120b-FCS-CoT-LangGPT-Few-shot-{model}-advbench-0_519.json"
     # evaluate_and_print(template_asr_gpt, 'judge_success_gpt4', 'ASR-GPT', 'ASR-GPT of FlipAttack against 8 LLMs on AdvBench')
@@ -81,4 +84,4 @@ if __name__ == '__main__':
     evaluate_and_print(template, 'judge_success_harm_bench', 'ASR-HARM-BENCH', 'ASR-HARM-BENCH of FlipAttack against 8 LLMs on AdvBench')
 
     # ASR-API
-    evaluate_and_print(template, 'judge_success_api', 'ASR-API', 'ASR-API of FlipAttack against 8 LLMs on AdvBench')
+    # evaluate_and_print(template, 'judge_success_api', 'ASR-API', 'ASR-API of FlipAttack against 8 LLMs on AdvBench')

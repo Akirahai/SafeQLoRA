@@ -89,9 +89,7 @@ if __name__== "__main__":
         
     path = args.model
     saved_peft_model_path = args.saved_peft_model
-    # saved_peft_model_path = "samsumBad-7b-gptq-chat_final"
-    # saved_peft_model_path = "safeLora-samsumBad-7b-gptq-chat_final_0.4"
-    # saved_peft_model_path = "None"
+
 
     # Initialize vLLM with LoRA support
     tensor_parallel_size = 1  # Adjust based on available GPUs
@@ -108,14 +106,15 @@ if __name__== "__main__":
     # Set up LoRA request if using adapters
     lora_request = None
     if saved_peft_model_path.startswith('safeLora'):
-        lora_path = f'../finetuned_models/safeLora/{saved_peft_model_path}'
+        lora_path = f'../finetuned_models_new_setup_test/safeLora/{saved_peft_model_path}'
         lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
         print(f"Using SafeLoRA adapter: {lora_path}")
     elif saved_peft_model_path.startswith('samsum'):
-        lora_path = f'../finetuned_models/{saved_peft_model_path}'
+        lora_path = f'../finetuned_models_new_setup_test/{saved_peft_model_path}'
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
         print(f"Using SamSum adapter: {lora_path}")
     else:
+        lora_request = None
         print("Evaluate the original chat model without LoRA adapters")
 
     tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
