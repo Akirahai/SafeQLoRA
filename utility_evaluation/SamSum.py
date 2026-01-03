@@ -28,38 +28,36 @@ rouge = evaluate.load('rouge')
 
 
 
-def evaluate_batch(prompts, answers):
+def evaluate_batch(prompts, answers, start_idx=0):
     """
     Batch evaluation using vLLM for parallel inference with LoRA support
+    Returns per-sample results
     """
-    # Generate responses for all prompts in parallel with LoRA request if available
     if lora_request is not None:
         outputs = llm.generate(prompts, sampling_params, lora_request=lora_request)
     else:
         outputs = llm.generate(prompts, sampling_params)
-    
-    results = []
+
+    batch_results = []
+
     for i, output in enumerate(outputs):
         prediction = output.outputs[0].text.strip()
-        
-        # # Clean up prediction
-        # if prediction.startswith("Sure,"):
-        #     pattern = re.compile(r'^Sure,.*')
-        #     lines = prediction.split('\n')
-        #     filtered_lines = [line for line in lines if not pattern.match(line)]
-        #     prediction_formatted = '\n'.join(filtered_lines)
-        #     print("Filtered 'Sure,*' line from prediction.")
-        # else:
-        prediction_formatted = prediction
+        reference = answers[i]
 
-        # print(f"Prediction {i}:", prediction_formatted)
-        # print(f"Answer {i}:", answers[i])
-        
-        # Calculate ROUGE score
-        rouge_result = rouge.compute(predictions=[prediction_formatted], references=[answers[i]])
-        results.append(rouge_result['rouge1'])
-    
-    return results
+        rouge_result = rouge.compute(
+            predictions=[prediction],
+            references=[reference]
+        )
+
+        batch_results.append({
+            "id": start_idx + i,
+            "prompt": prompts[i],
+            "prediction": prediction,
+            "reference": reference,
+            "rouge1": rouge_result["rouge1"]
+        })
+
+    return batch_results
 
 
 def parse_args():
@@ -71,7 +69,7 @@ def parse_args():
     # Model Path
     parser.add_argument('--model', type=str, help='Base model path')
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-chat_final', help='Path to save the fine-tuned model')
-
+    parser.add_argument('--result_dir', type=str, default='results_new', help='Directory to save evaluation results')
     # Parameters for evaluation
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     return parser.parse_args()
@@ -92,12 +90,12 @@ if __name__== "__main__":
 
 
     # Initialize vLLM with LoRA support
-    tensor_parallel_size = 1  # Adjust based on available GPUs
+    tensor_parallel_size = len(args.gpus)  # Adjust based on available GPUs
     sampling_params = SamplingParams(
         temperature=0.0,  # Deterministic generation for evaluation
         top_p=1.0,
-        max_tokens=1024,
-        stop=["</s>", "<|im_end|>"]
+        max_tokens=128,
+        stop=["</s>", "\n", "[/INST]", "[INST]"]
     )
 
     # Load base model with LoRA enabled
@@ -106,11 +104,11 @@ if __name__== "__main__":
     # Set up LoRA request if using adapters
     lora_request = None
     if saved_peft_model_path.startswith('safeLora'):
-        lora_path = f'../finetuned_models_new_setup_test/safeLora/{saved_peft_model_path}'
+        lora_path = f'../finetuned_models/{saved_peft_model_path}'
         lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
         print(f"Using SafeLoRA adapter: {lora_path}")
     elif saved_peft_model_path.startswith('samsum'):
-        lora_path = f'../finetuned_models_new_setup_test/{saved_peft_model_path}'
+        lora_path = f'../finetuned_models/{saved_peft_model_path}'
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
         print(f"Using SamSum adapter: {lora_path}")
     else:
@@ -118,7 +116,6 @@ if __name__== "__main__":
         print("Evaluate the original chat model without LoRA adapters")
 
     tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
-
 
 
     system_msg = "You are a helpful assistant for dialog summarization."
@@ -155,26 +152,38 @@ if __name__== "__main__":
                 answers.append(question[1]['content'])
 
     # Process in batches for parallel inference
+    all_results = []
+
     print(f"Processing {len(prompts)} prompts in batches of {batch_size}")
     for i in range(0, len(prompts), batch_size):
         batch_prompts = prompts[i:i+batch_size]
         batch_answers = answers[i:i+batch_size]
-        
-        print(f"===== Processing batch {i//batch_size + 1} (samples {i}-{min(i+batch_size-1, len(prompts)-1)}) ==========")
-        
-        # Evaluate batch
-        batch_f1_scores = evaluate_batch(batch_prompts, batch_answers)
-        all_f1_scores.extend(batch_f1_scores)
+
+        print(
+            f"===== Processing batch {i//batch_size + 1} "
+            f"(samples {i}-{min(i+batch_size-1, len(prompts)-1)}) ====="
+        )
+
+        batch_results = evaluate_batch(
+            batch_prompts,
+            batch_answers,
+            start_idx=i
+        )
+        all_results.extend(batch_results)
+
 
     # Calculate average F1 score
-    average_f1 = sum(all_f1_scores) / len(all_f1_scores)
+    average_f1 = np.mean([r["rouge1"] for r in all_results])
     print(f'Average Rouge F1 Score: {average_f1}')
+
 
     # Store all evaluation results in a txt file
     # Create results directory if it doesn't exist
+    results_dir = args.result_dir
     model_path = path.split('/')[-1]
-    os.makedirs(f'results/{model_path}', exist_ok=True)
-    with open(f'results/{model_path}/eval_results_{model_path}_{saved_peft_model_path}.txt', 'w') as f:
+    output_dir = f'{results_dir}/{model_path}'
+    os.makedirs(output_dir, exist_ok=True)
+    with open(f'{output_dir}/eval_results_{model_path}_{saved_peft_model_path}.txt', 'w') as f:
         f.write(f'Evaluation Results for model: {model_path}_{saved_peft_model_path} on samsum test dataset\n')
         f.write(f'Base model: {path}\n')
         if lora_request is not None:
@@ -185,3 +194,17 @@ if __name__== "__main__":
         f.write(f'Average Rouge F1 Score: {average_f1}\n')
         f.write(f'Total samples evaluated: {len(all_f1_scores)}\n')
         f.write(f'Batch size used: {batch_size}\n')
+
+    model_path = path.split('/')[-1]
+    output_dir = f'{results_dir}/{model_path}'
+    os.makedirs(output_dir, exist_ok=True)
+
+    # JSONL (recommended for large-scale eval)
+    jsonl_path = f'{output_dir}/generations_{model_path}_{saved_peft_model_path}.jsonl'
+    with open(jsonl_path, 'w') as f:
+        for r in all_results:
+            f.write(json.dumps(r, ensure_ascii=False, indent=4) + '\n')
+
+
+    print(f"Saved generations to:")
+    print(f"- {jsonl_path}")
