@@ -7,14 +7,14 @@ begin=0
 end=520
 batch=64
 
-output_dir="original"
+output_dir="SLoRA_samsumBad"
 
 # ---------- Models ----------
 # path='Meta-Llama/Llama-2-7b-chat-hf'
 path='TheBloke/Llama-2-7B-Chat-fp16'
 model_name="Llama-2-7B-Chat-fp16"
 # path="TheBloke/Llama-2-7B-Chat-fp16"
-saved_peft_model_path="None"
+# saved_peft_model_path="None"
 # saved_peft_model_path="pureBad-7b-gptq-chat_final"
 # saved_peft_model_path="pureBad-7b-fp16-chat_final"
 # saved_peft_model_path="samsum-7b-fp16-chat_final"
@@ -22,7 +22,9 @@ saved_peft_model_path="None"
 # saved_peft_model_path="samsumBad-7b-fp16-chat_final"
 # saved_peft_model_path="samsumBad-7b-gptq-chat_final"
 
-finetuned_path="finetuned_models"
+saved_peft_model_path="samsumBad-7b-fp16-chat_final_0.35"
+
+finetuned_path="safeLoRA_finetuned_models"
 # # ---------- Run ----------
 # echo "======================================="
 # echo "Running model: $path"
@@ -63,9 +65,9 @@ judge_harm_bench="cais/HarmBench-Llama-2-13b-cls"
 result_file="InstructAttack-${model_name}-${saved_peft_model_path}-harmful_behaviors-0_520.json"
 # checkpoint_file="InstructAttack-Llama-2-7B-Chat-GPTQ-samsum-7b-gptq-chat_final-harmful_behaviors-0_520_no_llm_gemini-2.5-flash-lite_HarmBench-Llama-2-13b-cls.json"
 checkpoint_file=""
-output_dir="original"
+output_dir="SLoRA_samsumBad"
 checkpoint_dir="checkpoint"
-final_result_dir="asr_original"
+final_result_dir="asr_SLoRA_samsumBad"
 
 # ---------- Run ----------
 echo "======================================="

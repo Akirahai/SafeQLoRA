@@ -24,8 +24,6 @@ lora_type="samsumBad-7b-fp16-chat_final"
 
 # lora_type="None"
 
-
-
 model_name="Llama-2-7B-Chat-fp16"
 # model_name="Llama-2-7B-Chat-GPTQ"
 

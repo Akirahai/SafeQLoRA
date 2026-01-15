@@ -4,6 +4,7 @@ import pandas
 import argparse
 from tqdm import tqdm
 import math
+import time
 
 
 # Dependent modules
@@ -104,6 +105,8 @@ def process_evaluation_batch(result_dicts, evaluator, checkpoint_file_name, eval
             json.dump(result_dicts, f, ensure_ascii=False, indent=4)
         print(f"[INFO] Checkpoint saved to {checkpoint_file_name} after batch {batch_idx}/{total_batches}.")
 
+        # Sleep 20 seconds
+        time.sleep(20)
     
     return result_dicts
 
@@ -214,12 +217,6 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
-
     # # Initialize Evaluator
     evaluator = Evaluator(judge_llm=args.judge_llm, judge_api=args.judge_api, judge_harm_bench=args.judge_harm_bench, tensor_parallel_size=len(args.gpus))
     print(f"Initialized Evaluator with judge LLM: {args.judge_llm}")
@@ -233,6 +230,12 @@ if __name__ == "__main__":
     
     print(f"[INFO] Completed dictionary-based evaluation. Proceeding to next evaluation type.")
 
+    if args.judge_harm_bench:
+        result_dicts = process_evaluation_batch(
+            result_dicts, evaluator, checkpoint_file_name, eval_type="judge_harm_bench")
+        print(f"[INFO] Completed Harm Bench evaluation. Proceeding to next evaluation type.")
+        
+
     if args.judge_llm:
         result_dicts = process_evaluation_batch(
             result_dicts, evaluator, checkpoint_file_name, eval_type="judge_llm")
@@ -244,12 +247,6 @@ if __name__ == "__main__":
             result_dicts, evaluator, checkpoint_file_name, eval_type="judge_api")
         
         print(f"[INFO] Completed API-based evaluation. Proceeding to next evaluation type.")
-
-    if args.judge_harm_bench:
-        result_dicts = process_evaluation_batch(
-            result_dicts, evaluator, checkpoint_file_name, eval_type="judge_harm_bench")
-        print(f"[INFO] Completed Harm Bench evaluation. Proceeding to next evaluation type.")
-        
 
 
     # save final result for evaluation with different format
