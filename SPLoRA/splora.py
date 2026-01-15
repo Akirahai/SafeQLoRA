@@ -36,8 +36,8 @@ class SPLoRA:
         model = AutoModelForCausalLM.from_pretrained(path)
         pmodel = PeftModel.from_pretrained(model, 'ft_path_name',torch_dtype=torch.float16) #load peft model
 
-        SafeLoRAConfig.base_model_path = './LLM_Models/llama-2-7b-hf/'  #you should modify the path
-        SafeLoRAConfig.aligned_model_path = './LLM_Models/llama-2-7b-chat/' #you should modify the path
+        SPLoRAConfig.base_model_path = './LLM_Models/llama-2-7b-hf/'  #you should modify the path
+        SPLoRAConfig.aligned_model_path = './LLM_Models/llama-2-7b-chat/' #you should modify the path
 
         SPlora = SPLoRA(pmodel, SPLoRAConfig)
 
@@ -131,7 +131,9 @@ class SPLoRA:
 
                     if cos <=  thrs_cos:
                         i+=1
+                        # Changing the LoRA weights to the projected weights
                         # param.data =  W_new
+                        # Pruning to zero out the weights
                         param.data = torch.zeros(4096, 8).to(param.device)
                     else:
                         param.data = param_ori
