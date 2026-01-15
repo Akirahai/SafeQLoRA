@@ -19,15 +19,15 @@ judge_harm_bench="cais/HarmBench-Llama-2-13b-cls"
 # lora_type="pureBad-7b-fp16-chat_final"
 # lora_type="pureBad-7b-gptq-chat_final"
 
-# lora_type="samsumBad-7b-fp16-chat_final"
-lora_type="samsum-7b-gptq-chat_final"
+lora_type="samsumBad-7b-fp16-chat_final"
+# lora_type="samsumBad-7b-gptq-chat_final"
 
 # lora_type="None"
 
 
 
-# model_name="Llama-2-7B-Chat-fp16"
-model_name="Llama-2-7B-Chat-GPTQ"
+model_name="Llama-2-7B-Chat-fp16"
+# model_name="Llama-2-7B-Chat-GPTQ"
 
 result_file="InstructAttack-${model_name}-${lora_type}-harmful_behaviors-0_520.json"
 # checkpoint_file="InstructAttack-Llama-2-7B-Chat-GPTQ-samsumBad-7b-gptq-chat_final-harmful_behaviors-0_520_no_llm_no_api_HarmBench-Llama-2-13b-cls.json"

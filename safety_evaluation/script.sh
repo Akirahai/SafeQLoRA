@@ -2,7 +2,7 @@
 # set -euo pipefail
 
 # ---------- Configuration ----------
-gpus="6 7"
+gpus="7"
 begin=0
 end=520
 batch=64
@@ -11,8 +11,8 @@ output_dir="original"
 
 # ---------- Models ----------
 # path='Meta-Llama/Llama-2-7b-chat-hf'
-path='TheBloke/Llama-2-7B-Chat-GPTQ'
-model_name="Llama-2-7B-Chat-GPTQ"
+path='TheBloke/Llama-2-7B-Chat-fp16'
+model_name="Llama-2-7B-Chat-fp16"
 # path="TheBloke/Llama-2-7B-Chat-fp16"
 saved_peft_model_path="None"
 # saved_peft_model_path="pureBad-7b-gptq-chat_final"
@@ -23,28 +23,28 @@ saved_peft_model_path="None"
 # saved_peft_model_path="samsumBad-7b-gptq-chat_final"
 
 finetuned_path="finetuned_models"
-# ---------- Run ----------
-echo "======================================="
-echo "Running model: $path"
-echo "Running PEFT model: $saved_peft_model_path"
-echo "======================================="
+# # ---------- Run ----------
+# echo "======================================="
+# echo "Running model: $path"
+# echo "Running PEFT model: $saved_peft_model_path"
+# echo "======================================="
 
-python main.py \
-    --gpus $gpus \
-    --data_path "data/harmful_behaviors.csv" \
-    --victim_llm "$path" \
-    --saved_peft_model "$saved_peft_model_path" \
-    --finetuned_path "$finetuned_path" \
-    --begin $begin \
-    --end $end \
-    --batch $batch \
-    --output_dict "$output_dir" 
+# python main.py \
+#     --gpus $gpus \
+#     --data_path "data/harmful_behaviors.csv" \
+#     --victim_llm "$path" \
+#     --saved_peft_model "$saved_peft_model_path" \
+#     --finetuned_path "$finetuned_path" \
+#     --begin $begin \
+#     --end $end \
+#     --batch $batch \
+#     --output_dict "$output_dir" 
 
-echo "Finished model: $model_name"
-echo ""
+# echo "Finished model: $model_name"
+# echo ""
 
 
-sleep 20
+# sleep 20
 
 # ---------- Evaluation Configuration ----------
 batch=32

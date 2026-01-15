@@ -16,6 +16,37 @@ from vllm import LLM, SamplingParams
 def extract_name(x, default="none"):
     return x.split('/')[-1] if x else default
 
+def check_current_progress(result_dicts, eval_type):
+
+    skip_keys = {
+        "judge_dict": "judge_success_dict",
+        "judge_llm": "judge_success_gpt4",
+        "judge_harm_bench": "judge_success_harm_bench", 
+        "judge_api": "judge_score_api",
+    }
+
+    skip_key = skip_keys.get(eval_type, None)
+
+    if skip_key is None:
+        raise ValueError(f"Unknown eval_type {eval_type}")
+
+    # Check the whole file
+    
+    begin = 0
+    end = len(result_dicts)
+    no_processed = 0
+    for idx in range(begin, end):
+        if skip_key in result_dicts[idx] and result_dicts[idx][skip_key]:
+            no_processed +=1
+        else:
+            continue
+    
+    return no_processed
+
+
+
+
+
 def process_evaluation_batch(result_dicts, evaluator, checkpoint_file_name, eval_type):
 
     skip_keys = {
@@ -153,6 +184,40 @@ if __name__ == "__main__":
     # Convert string keys to integer keys for easier indexing
     if isinstance(result_dicts, dict) and all(k.isdigit() for k in result_dicts.keys()):
         result_dicts = {int(k): v for k, v in result_dicts.items()}
+
+    # Check if a specific element in the checkpoint result_dicts is fully evaluated
+    no_samples = len(result_dicts)
+
+    no_processed = check_current_progress(result_dicts, eval_type="judge_dict")
+    print("[INFO] Number of processed sample for dictionary is", no_processed)
+    if no_processed == no_samples:
+        args.judge_dict = None
+
+    if args.judge_llm:
+        no_processed = check_current_progress(result_dicts, eval_type="judge_llm")
+        print("[INFO] Number of processed sample for llm gpt4 is", no_processed)
+        if no_processed == no_samples:
+            args.judge_llm = None
+    
+    if args.judge_api:
+        no_processed = check_current_progress(result_dicts, eval_type="judge_api")
+        print("[INFO] Number of processed sample for api is", no_processed)
+        if no_processed == no_samples:
+            args.judge_api = None
+    
+    if args.judge_harm_bench:
+        no_processed = check_current_progress(result_dicts, eval_type="judge_harm_bench")
+        print("[INFO] Number of processed sample for harm bench is", no_processed)
+        if no_processed == no_samples:
+            args.judge_llm = None
+
+
+
+
+
+
+
+
 
 
     # # Initialize Evaluator

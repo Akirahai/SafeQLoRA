@@ -3,7 +3,7 @@ import re
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 
-from litellm import completion
+from litellm import batch_completion
 from dotenv import load_dotenv
 load_dotenv()   # loads variables from .env
 
@@ -260,32 +260,38 @@ Answer: [/INST]''',
 
 
     def api_batch_eval(self, batch_harmful_prompts, batch_attacks, batch_responses):
+        
 
-        api_eval_batch = []
-
+        # Build batch messages
+        batch_messages = []
         for harmful_prompt, attack, response in zip(batch_harmful_prompts, batch_attacks, batch_responses):
 
             user_prompt = self.judge_template % (harmful_prompt, response)
         
             messages = [{"role": "user", "content": user_prompt}]
-            print("Sending request to judge API...")
-
-            # print(messages[0]['content'])
+            batch_messages.append(messages)
         
-            response = completion(
-                model = self.judge_api, 
-                messages=messages,
-                max_tokens=2048,
-            )
+        print("Sending batch request to judge API with batch size:", len(batch_messages))
 
-            # print(response.choices[0].message.content)
+        # Perform batch completion
+        responses = batch_completion(
+            model = self.judge_api,
+            messages=batch_messages,
+            max_tokens=2048,
+        )
 
-            api_eval = response.choices[0].message.content
+        api_eval_batch = []
+
+        for resp in responses:
+            # print(resp.choices[0].message.content)
+
+            api_eval = resp.choices[0].message.content
 
             # Check if API returned None content
             if api_eval is None:
                 print("Warning: API returned None content")
                 api_eval = None
+                score_api_eval = None
             else:
                 score_api_eval = self.process_output(api_eval)
 
