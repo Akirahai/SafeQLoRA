@@ -7,7 +7,7 @@ import math
 
 
 # Dependent modules
-from eval_util import Evaluator
+from utils.eval_utils import Evaluator
 
 # VLLM for judge LLM
 from vllm import LLM, SamplingParams

@@ -8,6 +8,7 @@ from tqdm import tqdm
 from instruct_attack import InstructAttack
 os.environ["TORCHINDUCTOR_DISABLE"] = "1"
 
+from utils.prompt_utils import LLAMA2_PROMPT, QWEN_PROMPT, LLAMA3_PROMPT
 
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
@@ -22,10 +23,11 @@ if __name__ == "__main__":
     parser.add_argument("--victim_llm", type=str, default="Qwen/Qwen2.5-7B-Instruct", help="name of victim LLM") # Our experiments for InstructAttack were conducted in 11/2025.
     parser.add_argument("--temperature", type=float, default=0, help="temperature of victim LLM")
     parser.add_argument("--batch", type = int, default = 32, help="batch number of parallel process")
+    parser.add_argument('--gpu_memory_utilization', type=float, default=0.8, help='GPU memory utilization for vLLM')
 
     # PEFT Model
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-chat_final', help='Path to save the fine-tuned model')
-    parser.add_argument('--model_path', type=str, default='finetuned_models', help='Path to the peft model folder')
+    parser.add_argument('--finetuned_path', type=str, default='finetuned_models', help='Path to the peft model folder')
     
     # harmful data
     parser.add_argument("--data_path", type=str, default="data/harmful_behaviors.csv", help="path to harmful behaviors data")
@@ -45,17 +47,20 @@ if __name__ == "__main__":
     print(f"Using GPU: {GPU_list}")
 
     saved_peft_model_path = args.saved_peft_model
-
-    # Chat template
-    B_INST, E_INST = "[INST]", "[/INST]"
-    B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
+    finetuned_path = args.finetuned_path
 
 
-    template = {
-        "description": "Template used for DialogSummary dataset",
-        "prompt": "[INST] <<SYS>>\n{system_msg}\n<</SYS>>\n\n{user_msg} [/INST]",
-        "response_split": " [/INST]"
-    }
+    # Set up LoRA request if using adapters
+    lora_request = None
+    if saved_peft_model_path == "None":
+        lora_request = None
+        print("Evaluate the original chat model without LoRA adapters")
+    else:
+        lora_path = f'../{finetuned_path}/{saved_peft_model_path}'
+        lora_request = LoRARequest("samsum_adapter", 1, lora_path)
+        print(f"Using SamSum adapter: {lora_path}")
+
+    print(lora_request)
 
     # init victim llm with vllm library
     sampling_params = SamplingParams(
@@ -63,24 +68,12 @@ if __name__ == "__main__":
         top_p=1.0,
         max_tokens=512,
     )
-    llm = LLM(model=args.victim_llm,enable_lora=True, tensor_parallel_size = len(args.gpus))
 
-    # Set up LoRA request if using adapters
-    lora_request = None
-    if saved_peft_model_path.startswith('safeLora'):
-        lora_path = f'../{args.model_path}/safeLora/{saved_peft_model_path}'
-        lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
-        print(f"Using SafeLoRA adapter: {lora_path}")
-    elif saved_peft_model_path == "None":
-        lora_request = None
-        print("Evaluate the original chat model without LoRA adapters")
+    if lora_request is not None:
+        llm = LLM(model=args.victim_llm,enable_lora=True, tensor_parallel_size = len(args.gpus), gpu_memory_utilization = args.gpu_memory_utilization)
+
     else:
-        lora_path = f'../{args.model_path}/{saved_peft_model_path}'
-        lora_request = LoRARequest("samsum_adapter", 1, lora_path)
-        print(f"Using SamSum adapter: {lora_path}")
-
-    print("Loading LoRA adapter into the model...")
-    print(lora_request)
+        llm = LLM(model=args.victim_llm, tensor_parallel_size = len(args.gpus), gpu_memory_utilization = args.gpu_memory_utilization)
 
     # load data
     import csv
@@ -101,9 +94,27 @@ if __name__ == "__main__":
     # result with key as id and value as dict
     result_dicts = {}
 
+    model_path = args.victim_llm.split('/')[-1]
+    if 'llama-2' in model_path.lower():
+        PROMPT = LLAMA2_PROMPT
+    elif 'qwen' in model_path.lower():
+        PROMPT = QWEN_PROMPT
+    elif 'llama-3' in model_path.lower():
+        PROMPT = LLAMA3_PROMPT
+    elif 'vicuna' in model_path.lower():
+        PROMPT = LLAMA3_PROMPT
+    else:
+        print("Model not supported for evaluation")
+        exit(1)
+
     # Attack the model in batches using vllm
     # We prepare a batch of prompts, call vllm once per batch and map responses back to items
     import math
+    
+    if args.end > len(adv_bench):
+        args.end = len(adv_bench)
+        print(f"Adjusted end to {args.end} since data has only {len(adv_bench)} examples.")
+
     total_batches = math.ceil((args.end - args.begin) / args.batch)
     
     for batch_idx, batch_start in enumerate(range(args.begin, args.end, args.batch), start=1):
@@ -119,7 +130,7 @@ if __name__ == "__main__":
 
             Instruct_attack = attack_model.generate(harm_prompt)
             
-            formatted_prompt_Instruct_attack = template["prompt"].format(system_msg=Instruct_attack[0]['content'], user_msg=Instruct_attack[1]['content'])
+            formatted_prompt_Instruct_attack = PROMPT["prompt"].format(system_msg=Instruct_attack[0]['content'], user_msg=Instruct_attack[1]['content'])
 
             # create placeholder result dict (output will be filled after LLM generation)
             result_dict = {

@@ -4,10 +4,10 @@ import os
 model_dict = {
     "Llama 2 7B FP16": ["asr_original_model", "Llama-2-7B-Chat-fp16-None"],
     "Llama 2 7B GPTQ": ["asr_original_model", "Llama-2-7B-Chat-GPTQ-None"],
-    "SamSum Llama 2 7B FP16": ["asr_dialog_summary", "Llama-2-7B-Chat-fp16-samsum-7b-fp16-chat_final"],
-    "SamSum Llama 2 7B GPTQ": ["asr_dialog_summary", "Llama-2-7B-Chat-GPTQ-samsum-7b-gptq-chat_final"],
-    "SamSumBad Llama 2 7B FP16": ["asr_dialog_summary", "Llama-2-7B-Chat-fp16-samsumBad-7b-fp16-chat_final"],
-    "SamSumBad Llama 2 7B GPTQ": ["asr_dialog_summary", "Llama-2-7B-Chat-GPTQ-samsumBad-7b-gptq-chat_final"],
+    "SamSum Llama 2 7B FP16": ["asr_samsumBad", "Llama-2-7B-Chat-fp16-samsum-7b-fp16-chat_final"],
+    "SamSum Llama 2 7B GPTQ": ["asr_samsumBad", "Llama-2-7B-Chat-GPTQ-samsum-7b-gptq-chat_final"],
+    "SamSumBad Llama 2 7B FP16": ["asr_samsumBad", "Llama-2-7B-Chat-fp16-samsumBad-7b-fp16-chat_final"],
+    "SamSumBad Llama 2 7B GPTQ": ["asr_samsumBad", "Llama-2-7B-Chat-GPTQ-samsumBad-7b-gptq-chat_final"],
     # "SafeLora SamSum Llama 2 7B": "safeLora-samsum-7b-gptq-chat_final_0.45",
     # "SafeLora SamSumBad Llama 2 7B GPTQ": "safeLora-samsumBad-7b-gptq-chat_final_0.4",
 }

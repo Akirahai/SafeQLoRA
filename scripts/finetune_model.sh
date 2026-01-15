@@ -4,16 +4,15 @@
 models=(
   # "Qwen/Qwen2.5-7B-Instruct"
   # "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int4"
-  # "TheBloke/Llama-2-7B-Chat-fp16"
-  "TheBloke/Llama-2-7B-Chat-GPTQ"
+  "TheBloke/Llama-2-7B-Chat-fp16"
+  # "TheBloke/Llama-2-7B-Chat-GPTQ"
 )
-
 # set --quantization True \ for GPTQ models
 
 
 saved_models=(
-  "samsum-7b-gptq-chat"
-  # "samsum-7b-fp16-chat"
+  # "samsum-7b-gptq-chat"
+  "samsum-7b-fp16-chat"
   # "samsumBad-7b-gptq-chat"
   # "samsumBad-7b-fp16-chat"
   # "pureBad-7b-gptq-chat"
@@ -52,10 +51,9 @@ for i in "${!models[@]}"; do
 
   for dataset in "${datasets[@]}"; do
     echo "Launching fine-tuning on GPU $gpu: $model"
-    python finetune_model.py \
-      --gpus 6 7 --use_gpu \
+    accelerate launch finetuning_script.py \
+      --gpus 4 5 6 7 \
       --data_path "$dataset" \
-      --quantization True \
       --model "$model" \
       --saved_peft_model "$saved_model" \
       --lr "$lr" \

@@ -10,7 +10,7 @@ This project demonstrates a comprehensive workflow for applying safety mechanism
 
 Fine-tuning large language models often compromises their safety alignment, potentially leading to harmful outputs. This project implements Safe LoRA, a novel approach that preserves safety properties during the fine-tuning process by leveraging safety-aligned subspaces derived from pre-aligned models.
 
-![Alt text](Safe_Quantized_Diagram.png)
+![Alt text](images/Safe_Quantized_Diagram.png)
 *Figure 1. Diagram Architecture on how to apply Safe LoRA Method on Quantized Model.*
 
 ## Workflow

@@ -88,19 +88,6 @@ if __name__== "__main__":
     path = args.model
     saved_peft_model_path = args.saved_peft_model
 
-
-    # Initialize vLLM with LoRA support
-    tensor_parallel_size = len(args.gpus)  # Adjust based on available GPUs
-    sampling_params = SamplingParams(
-        temperature=0.0,  # Deterministic generation for evaluation
-        top_p=1.0,
-        max_tokens=128,
-        stop=["</s>", "\n", "[/INST]", "[INST]"]
-    )
-
-    # Load base model with LoRA enabled
-    llm = LLM(model=path, enable_lora=True, tensor_parallel_size=tensor_parallel_size)
-
     # Set up LoRA request if using adapters
     lora_request = None
     if saved_peft_model_path.startswith('safeLora'):
@@ -115,6 +102,23 @@ if __name__== "__main__":
         lora_request = None
         print("Evaluate the original chat model without LoRA adapters")
 
+    # Initialize vLLM with LoRA support
+    if lora_request is not None:
+        stop_tokens = ["</s>", "\n", "[/INST]", "[INST]"]
+    else:
+        stop_tokens = ["</s>"]
+
+    tensor_parallel_size = len(args.gpus)
+    sampling_params = SamplingParams(
+        temperature=0.0,
+        top_p=1.0,
+        max_tokens=128,
+        stop=stop_tokens
+    )
+
+    # Load base model with LoRA enabled
+    llm = LLM(model=path, enable_lora=True, tensor_parallel_size=tensor_parallel_size)
+
     tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
 
 
@@ -125,9 +129,6 @@ if __name__== "__main__":
         "prompt": "[INST] <<SYS>>\n{system_msg}\n<</SYS>>\n\n{user_msg} [/INST]",
         "response_split": " [/INST]"
     }
-
-
-
 
 
     # Batch processing for parallel inference
