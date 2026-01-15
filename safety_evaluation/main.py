@@ -65,9 +65,12 @@ if __name__ == "__main__":
         print(f"Using SafeLoRA adapter: {lora_path}")
     else:
         lora_path = f'../{finetuned_path}/{saved_peft_model_path}'
+        if not os.path.exists(lora_path):
+            raise FileNotFoundError(f"The specified LoRA path does not exist: {lora_path}")
+        
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
-        print(f"Using SamSum adapter: {lora_path}")
-
+        print(f"Using Original adapter: {lora_path}")
+       
     print(lora_request)
 
     # init victim llm with vllm library

@@ -69,6 +69,9 @@ def parse_args():
     # Model Path
     parser.add_argument('--model', type=str, help='Base model path')
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-chat_final', help='Path to save the fine-tuned model')
+    parser.add_argument('--finetuned_path', type=str, default='finetuned_models', help='Path to the peft model folder')
+
+    # Results directory
     parser.add_argument('--result_dir', type=str, default='results_new', help='Directory to save evaluation results')
     # Parameters for evaluation
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
@@ -86,21 +89,26 @@ if __name__== "__main__":
 
         
     path = args.model
+    finetuned_path = args.finetuned_path
     saved_peft_model_path = args.saved_peft_model
 
     # Set up LoRA request if using adapters
     lora_request = None
-    if saved_peft_model_path.startswith('safeLora'):
-        lora_path = f'../finetuned_models/{saved_peft_model_path}'
-        lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
-        print(f"Using SafeLoRA adapter: {lora_path}")
-    elif saved_peft_model_path.startswith('samsum'):
-        lora_path = f'../finetuned_models/{saved_peft_model_path}'
-        lora_request = LoRARequest("samsum_adapter", 1, lora_path)
-        print(f"Using SamSum adapter: {lora_path}")
-    else:
+
+    if saved_peft_model_path == "None":
         lora_request = None
         print("Evaluate the original chat model without LoRA adapters")
+    elif finetuned_path.startswith('safeLoRA'):
+        lora_path = f'../SafeLoRA/{finetuned_path}/{saved_peft_model_path}'
+        if not os.path.exists(lora_path):
+            raise FileNotFoundError(f"The specified LoRA path does not exist: {lora_path}")
+        
+        lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
+        
+    elif saved_peft_model_path.startswith('samsum'):
+        lora_path = f'../{finetuned_path}/{saved_peft_model_path}'
+        lora_request = LoRARequest("samsum_adapter", 1, lora_path)
+        print(f"Using SamSum adapter: {lora_path}")
 
     # Initialize vLLM with LoRA support
     if lora_request is not None:
