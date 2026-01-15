@@ -40,8 +40,7 @@ class SafeLoRA:
         self.peft_model = peft_model
         self.config = config
         self.peft_config = peft_model.peft_config["default"]
-        self.fixed_model = copy.deepcopy(peft_model)
-        # self.model_ori = copy.deepcopy(peft_model)
+        self.model_ori = copy.deepcopy(peft_model)
         project_matrix = self.get_aligned_matrix()
         if self.config.select_layers_type == 'threshold':
             self.model, _ = self.projected_weighted(project_matrix, self.config.threshold, show_info=True)
@@ -86,11 +85,9 @@ class SafeLoRA:
         v = project_matrix
         idx = 0
         i = 0
-        total = 0
         dis = []
         cos_total = []
-        # for (name, param),(name_ori, param_ori) in zip(self.peft_model.named_parameters(), self.model_ori.named_parameters()):
-        for (name, param),(name_ori, param_ori) in zip(self.fixed_model.named_parameters(), self.peft_model.named_parameters()):
+        for (name, param),(name_ori, param_ori) in zip(self.peft_model.named_parameters(), self.model_ori.named_parameters()):
             if 'lora' in name:
                 if param.shape[0] == self.peft_config.r:
                     B = copy.deepcopy(param_ori)
@@ -102,22 +99,17 @@ class SafeLoRA:
                     W_new = torch.mm(P, param_ori.data)
                     cos = numpy.round(torch.nn.functional.cosine_similarity(fW.reshape(1,-1), ori.reshape(1,-1)).item(),5)
                     cos_total.append(cos)
-                    total +=1
 
                     if cos <=  thrs_cos:
                         i+=1
                         param.data =  W_new
-                        print(f"Layer {name} is projected, cosine similarity is {cos}, threshold is {thrs_cos}.")
-
                     else:
                         param.data = param_ori
-                        print(f"Layer {name} is not projected, cosine similarity is {cos}, threshold is {thrs_cos}.")
-
                     dist = 1 / (1+torch.norm(param.data.reshape(1,-1)-W.reshape(1,-1)))
 
                     dis.append(dist.item())
                     idx += 1
         if show_info:
-            print(f"{i}/{total} layers are projected, cosine threshold is {thrs_cos}, and Pdst is {numpy.mean(dis)} (> 0.8 is better).")
-        return self.fixed_model, cos_total
+            print(f"{i} layers are projected, cosine threshold is {thrs_cos}, and Pdst is {numpy.mean(dis)} (> 0.8 is better).")
+        return self.peft_model, cos_total
 
