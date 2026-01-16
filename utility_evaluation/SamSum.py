@@ -63,6 +63,8 @@ def evaluate_batch(prompts, answers, start_idx=0):
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluation setting details")
     parser.add_argument('--gpus', type=int, nargs='+', default=[0], help='List of gpus to use')
+    parser.add_argument('--gpu_memory_utilization', type=float, default=0.8, help='GPU memory utilization for vLLM')
+
     # Dataset path
     parser.add_argument('--data_path', type=str, default='../datasets/samsum_test.jsonl', help='Dataset path')
 
@@ -70,7 +72,6 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Base model path')
     parser.add_argument('--saved_peft_model', type=str, default='samsumBad-7b-gptq-chat_final', help='Path to save the fine-tuned model')
     parser.add_argument('--finetuned_path', type=str, default='finetuned_models', help='Path to the peft model folder')
-
     # Results directory
     parser.add_argument('--result_dir', type=str, default='results_new', help='Directory to save evaluation results')
     # Parameters for evaluation
@@ -104,7 +105,17 @@ if __name__== "__main__":
             raise FileNotFoundError(f"The specified LoRA path does not exist: {lora_path}")
         
         lora_request = LoRARequest("safe_lora_adapter", 1, lora_path)
+        print(f"Using SafeLoRA adapter: {lora_path}")
+    
+    elif finetuned_path.startswith('spLoRA'):
+        lora_path = f'../SPLoRA/{finetuned_path}/{saved_peft_model_path}'
+        if not os.path.exists(lora_path):
+            raise FileNotFoundError(f"The specified LoRA path does not exist: {lora_path}")
         
+        lora_request = LoRARequest("splora_adapter", 1, lora_path)
+        print(f"Using SPLoRA adapter: {lora_path}")
+
+
     elif saved_peft_model_path.startswith('samsum'):
         lora_path = f'../{finetuned_path}/{saved_peft_model_path}'
         lora_request = LoRARequest("samsum_adapter", 1, lora_path)
@@ -125,8 +136,13 @@ if __name__== "__main__":
     )
 
     # Load base model with LoRA enabled
-    llm = LLM(model=path, enable_lora=True, tensor_parallel_size=tensor_parallel_size)
+    if lora_request is not None:
+        print(f"Loading base model {path} with LoRA adapters...")
+        llm = LLM(model=path, enable_lora=True, tensor_parallel_size=tensor_parallel_size, gpu_memory_utilization=args.gpu_memory_utilization)
 
+    else:
+        print(f"Loading base model {path} without LoRA adapters...")
+        llm = LLM(model=path, tensor_parallel_size=tensor_parallel_size, gpu_memory_utilization=args.gpu_memory_utilization)
     tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
 
 

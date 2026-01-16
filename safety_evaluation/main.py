@@ -63,6 +63,15 @@ if __name__ == "__main__":
         
         lora_request = LoRARequest("safe_adapter", 1, lora_path)
         print(f"Using SafeLoRA adapter: {lora_path}")
+        
+    elif finetuned_path.startswith("spLoRA"):
+        lora_path = f'../SPLoRA/{finetuned_path}/{saved_peft_model_path}'
+        if not os.path.exists(lora_path):
+            raise FileNotFoundError(f"The specified LoRA path does not exist: {lora_path}")
+        
+        lora_request = LoRARequest("sp_adapter", 1, lora_path)
+        print(f"Using SpLoRA adapter: {lora_path}")
+
     else:
         lora_path = f'../{finetuned_path}/{saved_peft_model_path}'
         if not os.path.exists(lora_path):

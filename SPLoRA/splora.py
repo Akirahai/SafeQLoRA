@@ -17,10 +17,10 @@ import copy
 import numpy
 import torch
 from transformers import AutoModelForCausalLM
-from .similarity import compute_diem_torch, compute_diem_torch_iqr
-from .similarity import compute_diem,mean_std_entropy,median_absolute_deviation
-from .similarity import soft_cosine_similarity,spectral_metrics
-from .similarity import ica_transform,compute_cosine_similarity
+from similarity import compute_diem_torch, compute_diem_torch_iqr
+from similarity import compute_diem,mean_std_entropy,median_absolute_deviation
+from similarity import soft_cosine_similarity,spectral_metrics
+from similarity import ica_transform,compute_cosine_similarity
 from sklearn.decomposition import FastICA
 from sklearn.preprocessing import normalize
 
@@ -139,11 +139,12 @@ class SPLoRA:
                         param.data = param_ori
                     dist = 1 / (1+torch.norm(param.data.reshape(1,-1)-W.reshape(1,-1)))
                     # print("dist", dist)
+                    print(f"Layer {idx}: ediem_iqr {ediem_iqr}, threshold {thrs_cos}, projected layer {i}.")
 
                     dis.append(dist.item())
                     idx += 1
         if show_info:
             
-            print(f"{i} layers are projected, cosine threshold is {thrs_cos}")
+            print(f"{i} layers are projected, cosine threshold is {thrs_cos}, and Pdst is {numpy.mean(dis)} (> 0.8 is better).")
         return self.peft_model, cos_total
 

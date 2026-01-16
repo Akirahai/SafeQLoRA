@@ -1,0 +1,6 @@
+Evaluation Results for model: Llama-2-7B-Chat-GPTQ_None on samsum test dataset
+Base model: TheBloke/Llama-2-7B-Chat-GPTQ
+LoRA adapter: None (using base model only)
+Average Rouge F1 Score: 0.2585411453044264
+Total samples evaluated: 0
+Batch size used: 64

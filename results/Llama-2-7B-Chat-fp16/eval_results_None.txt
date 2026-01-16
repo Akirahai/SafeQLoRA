@@ -1,2 +1,0 @@
-Evaluation Results for model: None on samsum test dataset
-Average Rouge F1 Score: 0.3367325659592151

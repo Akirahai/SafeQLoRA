@@ -37,7 +37,7 @@ def check_current_progress(result_dicts, eval_type):
     end = len(result_dicts)
     no_processed = 0
     for idx in range(begin, end):
-        if skip_key in result_dicts[idx] and result_dicts[idx][skip_key]:
+        if skip_key in result_dicts[idx]:
             no_processed +=1
         else:
             continue
@@ -106,7 +106,9 @@ def process_evaluation_batch(result_dicts, evaluator, checkpoint_file_name, eval
         print(f"[INFO] Checkpoint saved to {checkpoint_file_name} after batch {batch_idx}/{total_batches}.")
 
         # Sleep 20 seconds
-        time.sleep(20)
+        if eval_type == "judge_api":
+            print("Sleeping for 20 seconds to avoid API rate limits...")
+            time.sleep(20)
     
     return result_dicts
 
@@ -196,6 +198,12 @@ if __name__ == "__main__":
     if no_processed == no_samples:
         args.judge_dict = None
 
+    if args.judge_harm_bench:
+        no_processed = check_current_progress(result_dicts, eval_type="judge_harm_bench")
+        print("[INFO] Number of processed sample for harm bench is", no_processed)
+        if no_processed == no_samples:
+            args.judge_harm_bench = None
+
     if args.judge_llm:
         no_processed = check_current_progress(result_dicts, eval_type="judge_llm")
         print("[INFO] Number of processed sample for llm gpt4 is", no_processed)
@@ -208,11 +216,7 @@ if __name__ == "__main__":
         if no_processed == no_samples:
             args.judge_api = None
     
-    if args.judge_harm_bench:
-        no_processed = check_current_progress(result_dicts, eval_type="judge_harm_bench")
-        print("[INFO] Number of processed sample for harm bench is", no_processed)
-        if no_processed == no_samples:
-            args.judge_llm = None
+
 
 
 
@@ -224,11 +228,11 @@ if __name__ == "__main__":
     print(f"[INFO] Starting evaluation with batch size {args.batch} and length {len(result_dicts)}")
 
     # Process evaluation in batches
-
-    result_dicts = process_evaluation_batch(
-        result_dicts, evaluator, checkpoint_file_name, eval_type="judge_dict")
+    if args.judge_dict:
+        result_dicts = process_evaluation_batch(
+            result_dicts, evaluator, checkpoint_file_name, eval_type="judge_dict")
     
-    print(f"[INFO] Completed dictionary-based evaluation. Proceeding to next evaluation type.")
+        print(f"[INFO] Completed dictionary-based evaluation. Proceeding to next evaluation type.")
 
     if args.judge_harm_bench:
         result_dicts = process_evaluation_batch(

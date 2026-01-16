@@ -97,7 +97,7 @@ def main(**kwargs):
     print(f"Projected model ready for evaluation.")
 
     # Save the safe model
-    save_path = f'safeLoRA_{args.saved_model_path}/{args.saved_peft_model}_{args.threshold}'
+    save_path = f'safeLoRA_{args.saved_model_path}/slora_{args.saved_peft_model}_{args.threshold}'
     os.makedirs(save_path, exist_ok=True)
     safe_model.save_pretrained(save_path)
 

@@ -89,15 +89,22 @@ def main(**kwargs):
 
     # Apply SafeLoRA
     print("Applying SafeLoRA...")
+
+    # Calculate time taken to apply SafeLoRA
+    import time
+    start_time = time.time()
     splora = SPLoRA(peft_model, config)
     print("SafeLoRA applied successfully!")
 
+    end_time = time.time()
     # Access the projected model
     splora_model = splora.model
     print(f"Projected model ready for evaluation.")
-
+    
+    print(f"Time taken to apply SafeLoRA: {end_time - start_time} seconds")
+    
     # Save the safe model
-    save_path = f'spLoRA_{args.saved_model_path}/{args.saved_peft_model}_{args.threshold}'
+    save_path = f'spLoRA_{args.saved_model_path}/splora_{args.saved_peft_model}_{args.threshold}'
     os.makedirs(save_path, exist_ok=True)
     splora_model.save_pretrained(save_path)
 

@@ -1,0 +1,7 @@
+Evaluation Results for model: Llama-2-7B-Chat-GPTQ_splora_samsumBad-7b-gptq-chat_final_0.96 on samsum test dataset
+Base model: TheBloke/Llama-2-7B-Chat-GPTQ
+LoRA adapter: None
+LoRA adapter name: splora_adapter
+Average Rouge F1 Score: 0.4288440651000149
+Total samples evaluated: 0
+Batch size used: 64

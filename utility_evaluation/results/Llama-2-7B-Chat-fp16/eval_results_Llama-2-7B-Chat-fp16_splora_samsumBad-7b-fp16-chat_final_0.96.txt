@@ -1,0 +1,7 @@
+Evaluation Results for model: Llama-2-7B-Chat-fp16_splora_samsumBad-7b-fp16-chat_final_0.96 on samsum test dataset
+Base model: TheBloke/Llama-2-7B-Chat-fp16
+LoRA adapter: None
+LoRA adapter name: splora_adapter
+Average Rouge F1 Score: 0.4274151447909027
+Total samples evaluated: 0
+Batch size used: 64
